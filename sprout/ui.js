@@ -420,15 +420,20 @@ function dayBody() {
       ${ec ? `<input type="time" id="d-end" data-in="s.day.end" value="${esc(d.end)}" aria-label="Day ends">` : ''}`)}
     ${group('Breathing room between things', `<div class="chips">${[[0, 'None'], [10, '10 min'], [15, '15 min'], [30, '30 min']].map(([v, l]) => chip(l, S.settings.buffer === v, `data-act="set" data-p="s.buffer" data-v="${v}" data-n="1"`)).join('')}</div>`)}`;
 }
+// Says why Google refused, so a setup problem is not mistaken for a bad connection.
+const calWhy = e => e.code === 'offline' ? ' Check your connection.'
+  : e.code === 'auth' ? ' Your sign-in expired. Sign in again.'
+  : /has not been used|is disabled|accessNotConfigured/i.test(e.message || '') ? ' Google Calendar API is not turned on for this app’s Google Cloud project (README, step 1).'
+  : e.message ? ` Google said: ${esc(e.message)}` : '';
 function calsBody() {
   const c = S.settings.cals, me = A.primary, mine = S.cals[me.sub] || [], writable = mine.filter(SP.canWrite);
   const missing = S.settings.accounts.filter(x => !A.extra.some(y => y.sub === x.sub));
   const acctBlock = a => { const cals = S.cals[a.sub] || [], extra = a !== me;
     return `<div class="acct"><div class="sec-head"><b>${esc(a.email)}</b>${extra ? '<span class="tag">View only</span>' : ''}</div>
       ${!SP.live(a) ? `<div class="note warn row"><span>Needs reconnecting on this device.</span><button class="btn small" data-act="reconnect" data-v="${a.sub}">Reconnect</button></div>` : ''}
-      <div class="list card">${cals.map(x => { const key = SP.calKey(a.sub, x.id); return `<button class="listrow sw" role="switch" aria-checked="${c.read.includes(key)}" data-act="calread" data-v="${esc(key)}"><b>${esc(x.name)}</b><span></span><i class="switch"></i></button>`; }).join('') || `<p class="empty">${S.calErr[a.sub] ? 'Could not load this account’s calendars.' : 'Loading calendars…'}</p>`}</div>
+      <div class="list card">${cals.map(x => { const key = SP.calKey(a.sub, x.id); return `<button class="listrow sw" role="switch" aria-checked="${c.read.includes(key)}" data-act="calread" data-v="${esc(key)}"><b>${esc(x.name)}</b><span></span><i class="switch"></i></button>`; }).join('') || `<p class="empty">${S.calErr[a.sub] ? 'Could not load this account’s calendars.' + calWhy(S.calErr[a.sub]) : 'Loading calendars…'}</p>`}</div>
       ${extra ? `<button class="link danger" data-act="acctdel" data-v="${a.sub}">Disconnect this account</button>` : ''}</div>`; };
-  return `${group('Add my plan to', writable.length ? `<div class="opts">${writable.map(x => { const key = SP.calKey(me.sub, x.id); return opt(esc(x.name), x.primary ? 'Your main calendar' : '', c.write === key, `data-act="calwrite" data-v="${esc(key)}"`); }).join('')}</div>` : `<p class="empty">${S.calErr[me.sub] ? 'Could not load your calendars. Check your connection.' : 'Loading your calendars…'}</p>`, 'This is the only calendar Sprout ever adds to or changes.')}
+  return `${group('Add my plan to', writable.length ? `<div class="opts">${writable.map(x => { const key = SP.calKey(me.sub, x.id); return opt(esc(x.name), x.primary ? 'Your main calendar' : '', c.write === key, `data-act="calwrite" data-v="${esc(key)}"`); }).join('')}</div>` : `<p class="empty">${S.calErr[me.sub] ? 'Could not load your calendars.' + calWhy(S.calErr[me.sub]) : 'Loading your calendars…'}</p>`, 'This is the only calendar Sprout ever adds to or changes.')}
     ${group('Plan around events in', SP.accounts().map(acctBlock).join(''), 'Sprout treats events in these calendars as busy time.')}
     ${missing.map(x => `<div class="note row"><span>${esc(x.email)} is not connected on this device.</span><button class="btn small" data-act="addacct">Connect</button></div>`).join('')}
     <button class="btn" data-act="addacct">${IC.plus}Connect another Google account</button>
